@@ -44,22 +44,23 @@
 
 #define SCR 8
 
-#define GFX_BL 45
+#define GFX_BL LCD_BL
 const int freq = 1000;
 const int ledChannel = 7;
 const int resolution = 8;
 
 Arduino_ESP32RGBPanel *rgbpanel = new Arduino_ESP32RGBPanel(
-    39 /* DE */, 38 /*VSYNC */, 5 /*HSYNC */, 9 /* PCLK */,
-    10 /* R0 */, 11 /* R1 */, 12 /* R2 */, 13 /* R3 */, 14 /* R4 */,
-    21 /* G0 */, 0 /* G1 */, 46 /* G2 */, 3 /* G3 */, 8 /* G4 */, 18 /* G5 */,
-    17 /* B0 */, 16 /* B1 */, 15 /* B2 */, 7 /* B3 */, 6 /* B4 */,
-    0 /* hsync_polarity */, 0 /* hsync_front_porch */, 210 /* hsync_pulse_width */, 30 /* hsync_back_porch */,
-    0 /* vsync_polarity */, 0 /* vsync_front_porch */, 22 /* vsync_pulse_width */, 13 /* vsync_back_porch */,
-    1 /* pclk_active_neg */, 16000000 /* prefer_speed */);
+    LCD_DE, LCD_VSYNC, LCD_HSYNC, LCD_PCLK,
+    LCD_R0, LCD_R1, LCD_R2, LCD_R3, LCD_R4,
+    LCD_G0, LCD_G1, LCD_G2, LCD_G3, LCD_G4, LCD_G5,
+    LCD_B0, LCD_B1, LCD_B2, LCD_B3, LCD_B4,
+    LCD_HSP, LCD_HFP, LCD_HPW, LCD_HBP,
+    LCD_VSP, LCD_VFP, LCD_VPW, LCD_VBP,
+    LCD_PCK_AN, LCD_FREQ);
 
 Arduino_RGB_Display *gfx = new Arduino_RGB_Display(
-    800 /* width */, 481 /*height */, rgbpanel);
+    LCD_WIDTH, LCD_HEIGHT , rgbpanel);
+
 
 TAMC_GT911 tp = TAMC_GT911(TOUCH_SDA, TOUCH_SCL, TOUCH_INT, TOUCH_RST, TOUCH_WIDTH, TOUCH_HEIGHT);
 ChronosESP32 watch("Jarvis Clock");
@@ -84,11 +85,11 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
   uint32_t w = (area->x2 - area->x1 + 1);
   uint32_t h = (area->y2 - area->y1 + 1);
 
-#if (LV_COLOR_16_SWAP != 0)
-  gfx->draw16bitBeRGBBitmap(area->x1, area->y1, (uint16_t *)&color_p->full, w, h);
-#else
-  gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)&color_p->full, w, h);
-#endif
+  #if (LV_COLOR_16_SWAP != 0)
+    gfx->draw16bitBeRGBBitmap(area->x1, area->y1, (uint16_t *)&color_p->full, w, h);
+  #else
+    gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)&color_p->full, w, h);
+  #endif
 
   lv_disp_flush_ready(disp);
 }
@@ -316,7 +317,7 @@ void configCallback(Config config, uint32_t a, uint32_t b)
 
 void logCallback(Level level, unsigned long time, String message)
 {
-  Serial0.print(message);
+  Serial.print(message);
 
   switch (level)
   {
@@ -329,11 +330,13 @@ void logCallback(Level level, unsigned long time, String message)
 void setup()
 {
   Serial.begin(115200);
-  Serial0.begin(115200);
+  // Serial0.begin(115200);
   Timber.setLogCallback(logCallback);
 
   gfx->begin();
+  gfx->setRotation(2);
   gfx->fillScreen(BLACK);
+
 
   // #ifdef GFX_BL
   //   pinMode(GFX_BL, OUTPUT);
@@ -344,7 +347,7 @@ void setup()
   ledcAttachPin(GFX_BL, ledChannel);
   ledcWrite(ledChannel, int(2.55 * 95));
   tp.begin();
-  tp.setRotation(ROTATION_INVERTED);
+  tp.setRotation(ROTATION_NORMAL);
 
   lv_init();
 
@@ -357,7 +360,7 @@ void setup()
   else
   {
 
-    Timber.i("Display buffer size: ");
+    Timber.i("Display buffer size: %d", screenWidth * SCR);
 
     lv_disp_draw_buf_init(&draw_buf, disp_draw_buf, disp_draw_buf2, screenWidth * SCR);
 
